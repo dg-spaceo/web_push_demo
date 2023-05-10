@@ -1,0 +1,47 @@
+<h1>Notifications</h1>
+
+<script>
+  const vapidPublicKey = new Uint8Array(<%= Base64.urlsafe_decode64(Rails.application.credentials.dig(:webpush, :public_key)).bytes %>);
+
+  // application.js
+  // Register the serviceWorker script at /serviceworker.js from your server if supported
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.register('/service_worker.js')
+    .then(function(reg) {
+      navigator.serviceWorker.ready.then((serviceWorkerRegistration) => {
+        serviceWorkerRegistration.pushManager
+        .subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: vapidPublicKey
+        }).then(async function(sub){
+          const data = await fetch('/notifications',{
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(sub),
+          }).then(r => r.json());
+          console.log(data);
+        });
+      });
+    });
+  }
+  // Otherwise, no push notifications :(
+  else {
+    console.error('Service worker is not supported in this browser');
+  }
+
+
+
+  // Initialize the agent at application startup.
+  const fpPromise = import('https://openfpcdn.io/fingerprintjs/v3').then(FingerprintJS => FingerprintJS.load())
+
+  // Get the visitor identifier when you need it.
+  fpPromise
+    .then(fp => fp.get())
+    .then(result => {
+      // This is the visitor identifier:
+      const visitorId = result.visitorId
+      console.log(visitorId)
+    })
+</script>
